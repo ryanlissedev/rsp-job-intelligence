@@ -1,6 +1,6 @@
 /* oxlint-disable eslint/complexity, eslint/require-await, eslint/no-nested-ternary, unicorn/no-nested-ternary, anti-slop/no-unknown-parameters, anti-slop/require-safety-comment-for-type-assertion -- These stateful protocol fixtures intentionally centralize REST and GraphQL response branches to exercise fail-closed release behavior. */
 import { describe, expect, it } from "bun:test";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -11,6 +11,7 @@ import {
   assertStrictReleaseAncestry,
   assertTrustedCheck,
   blockedReleasePath,
+  gitEnvWithoutRepoOverrides,
   gitReleaseDiffSource,
   isReleaseLedgerEntry,
   parseReviewMode,
@@ -1066,18 +1067,29 @@ describe("production release gate git diff source", () => {
   });
 });
 
-const git = (cwd: string, ...args: string[]): string =>
-  execFileSync("git", args, {
-    cwd,
-    encoding: "utf-8",
-    env: {
-      ...process.env,
-      GIT_AUTHOR_EMAIL: "gate@test.invalid",
-      GIT_AUTHOR_NAME: "gate",
-      GIT_COMMITTER_EMAIL: "gate@test.invalid",
-      GIT_COMMITTER_NAME: "gate",
-    },
-  }).trim();
+// Fixture repositories live in a fresh temp dir and every git call strips the
+// inherited GIT_* variables: a pre-push hook (or a linked worktree) exports
+// GIT_DIR/GIT_WORK_TREE/GIT_INDEX_FILE, and git honours those over `cwd`, so
+// without this the fixture commits below land in the surrounding real repo
+// and `git init` can flip its core.bare.
+const gitAs =
+  (author: string) =>
+  (cwd: string, ...args: string[]): string =>
+    execFileSync("git", ["-C", cwd, ...args], {
+      cwd,
+      encoding: "utf-8",
+      env: {
+        ...gitEnvWithoutRepoOverrides(process.env),
+        GIT_AUTHOR_EMAIL: `${author}@test.invalid`,
+        GIT_AUTHOR_NAME: author,
+        GIT_COMMITTER_EMAIL: `${author}@test.invalid`,
+        GIT_COMMITTER_NAME: author,
+      },
+    }).trim();
+
+const git = gitAs("gate");
+
+const REAL_REPOSITORY_TEST = "lists more than 300 files";
 
 const commitFile = (
   cwd: string,
@@ -1092,7 +1104,7 @@ const commitFile = (
 };
 
 describe("gitReleaseDiffSource over a real repository", () => {
-  it("lists more than 300 files, every commit, and both sides of a rename", async () => {
+  it(`${REAL_REPOSITORY_TEST}, every commit, and both sides of a rename`, async () => {
     const cwd = mkdtempSync(path.join(tmpdir(), "release-gate-git-"));
     try {
       git(cwd, "init", "-q", "-b", "main");
@@ -1130,4 +1142,95 @@ describe("gitReleaseDiffSource over a real repository", () => {
       rmSync(cwd, { force: true, recursive: true });
     }
   });
+});
+
+interface RepoSnapshot {
+  readonly authors: string;
+  readonly bare: string;
+  readonly head: string;
+  readonly refs: string;
+  readonly status: string;
+}
+
+const snapshotRepo = (cwd: string): RepoSnapshot => {
+  const sentinelGit = gitAs("sentinel");
+  return {
+    authors: sentinelGit(cwd, "log", "--all", "--format=%ae"),
+    bare: sentinelGit(cwd, "config", "--get", "core.bare"),
+    head: sentinelGit(cwd, "rev-parse", "HEAD"),
+    refs: sentinelGit(cwd, "for-each-ref", "--format=%(refname) %(objectname)"),
+    status: sentinelGit(cwd, "status", "--porcelain"),
+  };
+};
+
+describe("release-gate spec git isolation", () => {
+  it("strips every GIT_* variable and keeps the rest", () => {
+    expect(
+      gitEnvWithoutRepoOverrides({
+        GIT_ALTERNATE_OBJECT_DIRECTORIES: "/x",
+        GIT_COMMON_DIR: "/x",
+        GIT_DIR: "/x",
+        GIT_INDEX_FILE: "/x",
+        GIT_OBJECT_DIRECTORY: "/x",
+        GIT_WORK_TREE: "/x",
+        HOME: "/home/test",
+        PATH: "/usr/bin",
+        UNSET: undefined,
+      })
+    ).toEqual({ HOME: "/home/test", PATH: "/usr/bin" });
+  });
+
+  it(
+    "leaves a hook's GIT_DIR repository untouched while building its fixtures",
+    () => {
+      const sentinel = mkdtempSync(
+        path.join(tmpdir(), "release-gate-sentinel-")
+      );
+      try {
+        const sentinelGit = gitAs("sentinel");
+        sentinelGit(sentinel, "init", "-q", "-b", "main");
+        writeFileSync(path.join(sentinel, "README.md"), "sentinel\n");
+        sentinelGit(sentinel, "add", "-A");
+        sentinelGit(sentinel, "commit", "-q", "-m", "sentinel");
+        const before = snapshotRepo(sentinel);
+        const gitDir = path.join(sentinel, ".git");
+
+        // Re-run the real-repository fixture test the way a pre-push hook
+        // (or a linked worktree) would: with git's repository variables
+        // aimed at a real repo instead of the fixture's temp dir.
+        const run = spawnSync(
+          process.execPath,
+          [
+            "test",
+            path.join(import.meta.dir, "release-gate.spec.ts"),
+            "--test-name-pattern",
+            REAL_REPOSITORY_TEST,
+          ],
+          {
+            cwd: sentinel,
+            encoding: "utf-8",
+            env: {
+              ...process.env,
+              GIT_COMMON_DIR: gitDir,
+              GIT_DIR: gitDir,
+              GIT_INDEX_FILE: path.join(gitDir, "index"),
+              GIT_OBJECT_DIRECTORY: path.join(gitDir, "objects"),
+              GIT_WORK_TREE: sentinel,
+            },
+            timeout: 120_000,
+          }
+        );
+        expect(`${run.stdout}${run.stderr}`).toContain("1 pass");
+        expect(run.status).toBe(0);
+
+        const after = snapshotRepo(sentinel);
+        expect(after).toEqual(before);
+        expect(after.bare).toBe("false");
+        expect(after.authors).not.toContain("gate@test.invalid");
+      } finally {
+        rmSync(sentinel, { force: true, recursive: true });
+      }
+    },
+    { timeout: 150_000 }
+  );
 });

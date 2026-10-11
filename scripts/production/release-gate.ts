@@ -973,13 +973,37 @@ const releaseDiffFromGit = async (
 
 const execFileAsync = promisify(execFile);
 
+/** A child-process environment with no `GIT_*` repository overrides. */
+export type GitChildEnv = NodeJS.ProcessEnv;
+
+/**
+ * Copies `env` without any `GIT_*` variable. A pre-push hook exports
+ * GIT_DIR/GIT_WORK_TREE/GIT_INDEX_FILE (and a linked worktree can add
+ * GIT_COMMON_DIR); a child git process that inherits them ignores its `cwd`
+ * and reads or writes the surrounding repository instead. Every git call
+ * here passes an explicit `cwd` and `-C`, so repository discovery must come
+ * from that directory alone.
+ */
+export const gitEnvWithoutRepoOverrides = (
+  env: Readonly<NodeJS.ProcessEnv>
+): GitChildEnv => {
+  const isolated: GitChildEnv = {};
+  for (const [key, value] of Object.entries(env)) {
+    if (value !== undefined && !key.startsWith("GIT_")) {
+      isolated[key] = value;
+    }
+  }
+  return isolated;
+};
+
 const runGit = async (
   cwd: string,
   args: readonly string[]
 ): Promise<string> => {
-  const { stdout } = await execFileAsync("git", [...args], {
+  const { stdout } = await execFileAsync("git", ["-C", cwd, ...args], {
     cwd,
     encoding: "utf-8",
+    env: gitEnvWithoutRepoOverrides(process.env),
     maxBuffer: GIT_MAX_BUFFER_BYTES,
     timeout: GIT_TIMEOUT_MS,
   });
