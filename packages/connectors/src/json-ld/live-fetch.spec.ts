@@ -1,71 +1,39 @@
 import { afterEach, describe, expect, it } from "bun:test";
 
+import { JOB_INTELLIGENCE_USER_AGENT } from "../user-agent";
 import {
-  BROWSER_LIKE_HEADERS,
   buildLiveFetchHeaders,
   cloudflareChallengeError,
-  cookieEnvVarForLiveGate,
   isCloudflareChallenge,
+  LIVE_FETCH_HEADERS,
   readLiveHtmlOrThrow,
-  readOpsCookieHeader,
+  toLiveFetchHeadersInit,
 } from "./live-fetch";
-
-const COOKIE_ENV = "WERKZOEKEN_COOKIE";
 
 afterEach(() => {
   delete process.env.WERKZOEKEN_COOKIE;
-});
-
-describe("cookieEnvVarForLiveGate", () => {
-  it("pairs *_LIVE with *_COOKIE", () => {
-    expect(cookieEnvVarForLiveGate("WERKZOEKEN_LIVE")).toBe(
-      "WERKZOEKEN_COOKIE"
-    );
-    expect(cookieEnvVarForLiveGate("BLUETRAIL_LIVE")).toBe("BLUETRAIL_COOKIE");
-  });
-
-  it("returns null when the live gate is missing or not *_LIVE", () => {
-    expect(cookieEnvVarForLiveGate()).toBeNull();
-    expect(cookieEnvVarForLiveGate("WERKZOEKEN")).toBeNull();
-  });
-});
-
-describe("readOpsCookieHeader", () => {
-  it("returns null when unset or blank", () => {
-    expect(readOpsCookieHeader(COOKIE_ENV)).toBeNull();
-    process.env[COOKIE_ENV] = "   ";
-    expect(readOpsCookieHeader(COOKIE_ENV)).toBeNull();
-  });
-
-  it("returns the trimmed cookie value", () => {
-    process.env[COOKIE_ENV] = " cf_clearance=abc; __cf_bm=def ";
-    expect(readOpsCookieHeader(COOKIE_ENV)).toBe(
-      "cf_clearance=abc; __cf_bm=def"
-    );
-  });
+  delete process.env.WERKZOEKEN_LIVE;
 });
 
 describe("buildLiveFetchHeaders", () => {
-  it("always includes browser-like defaults", () => {
-    expect(buildLiveFetchHeaders()).toMatchObject(BROWSER_LIKE_HEADERS);
-    expect(buildLiveFetchHeaders().Cookie).toBeUndefined();
+  it("sends the honest product User-Agent, never a browser one", () => {
+    const headers = buildLiveFetchHeaders();
+    expect(headers).toEqual({ ...LIVE_FETCH_HEADERS });
+    expect(headers["User-Agent"]).toBe(JOB_INTELLIGENCE_USER_AGENT);
+    expect(headers["User-Agent"]).toMatch(/^NewonesJobIntelligence\/\d/u);
+    expect(headers["User-Agent"]).not.toMatch(
+      /Mozilla|Chrome|Safari|AppleWebKit|Gecko/u
+    );
   });
 
-  it("prefers an explicit cookieHeader over the env value", () => {
-    process.env[COOKIE_ENV] = "from-env=1";
+  it("never carries a Cookie, even when a legacy *_COOKIE env is set", () => {
+    process.env.WERKZOEKEN_LIVE = "1";
+    process.env.WERKZOEKEN_COOKIE = "cf_clearance=abc; __cf_bm=def";
+    const headers = buildLiveFetchHeaders();
+    expect(headers.Cookie).toBeUndefined();
     expect(
-      buildLiveFetchHeaders({
-        cookieHeader: "from-option=1",
-        liveEnvVar: "WERKZOEKEN_LIVE",
-      }).Cookie
-    ).toBe("from-option=1");
-  });
-
-  it("reads the ops cookie env when no option is set", () => {
-    process.env[COOKIE_ENV] = "cf_clearance=xyz";
-    expect(
-      buildLiveFetchHeaders({ liveEnvVar: "WERKZOEKEN_LIVE" }).Cookie
-    ).toBe("cf_clearance=xyz");
+      toLiveFetchHeadersInit(headers).map(([name]) => name.toLowerCase())
+    ).not.toContain("cookie");
   });
 });
 
@@ -99,7 +67,6 @@ describe("readLiveHtmlOrThrow", () => {
     const response = new Response("<html>ok</html>", { status: 200 });
     await expect(
       readLiveHtmlOrThrow({
-        cookieEnvVar: COOKIE_ENV,
         response,
         slug: "werkzoeken",
         url: "https://www.werkzoeken.nl/x",
@@ -107,14 +74,13 @@ describe("readLiveHtmlOrThrow", () => {
     ).resolves.toBe("<html>ok</html>");
   });
 
-  it("throws an ops-actionable error on a Cloudflare challenge", async () => {
+  it("fails closed on a Cloudflare challenge without a cookie hint", async () => {
     const response = new Response("<title>Just a moment...</title>", {
       headers: { "cf-mitigated": "challenge" },
       status: 403,
     });
     await expect(
       readLiveHtmlOrThrow({
-        cookieEnvVar: COOKIE_ENV,
         response,
         slug: "werkzoeken",
         url: "https://www.werkzoeken.nl/x",
@@ -122,7 +88,6 @@ describe("readLiveHtmlOrThrow", () => {
     ).rejects.toThrow(/Cloudflare managed challenge/u);
     await expect(
       readLiveHtmlOrThrow({
-        cookieEnvVar: COOKIE_ENV,
         response: new Response("<title>Just a moment...</title>", {
           headers: { "cf-mitigated": "challenge" },
           status: 403,
@@ -130,14 +95,13 @@ describe("readLiveHtmlOrThrow", () => {
         slug: "werkzoeken",
         url: "https://www.werkzoeken.nl/x",
       })
-    ).rejects.toThrow(/WERKZOEKEN_COOKIE/u);
+    ).rejects.toThrow(/carry no clearance cookies/u);
   });
 
   it("still fails closed on non-challenge HTTP errors", async () => {
     const response = new Response("nope", { status: 500 });
     await expect(
       readLiveHtmlOrThrow({
-        cookieEnvVar: null,
         response,
         slug: "werkzoeken",
         url: "https://www.werkzoeken.nl/x",
@@ -149,7 +113,6 @@ describe("readLiveHtmlOrThrow", () => {
 describe("cloudflareChallengeError", () => {
   it("points at the runbook and forbids CAPTCHA solvers", () => {
     const error = cloudflareChallengeError({
-      cookieEnvVar: COOKIE_ENV,
       slug: "werkzoeken",
       url: "https://www.werkzoeken.nl/",
     });

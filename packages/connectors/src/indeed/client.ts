@@ -27,7 +27,6 @@ export interface IndeedClient {
 
 export interface IndeedClientOptions {
   baseUrl?: string;
-  cookieHeader?: string | null;
   /** jobkey → fixture path for `fetchDetail` in fixture mode. Defaults to
    * the one embedded viewjob the real 2026-09-18 capture carries. */
   detailFixtures?: Record<string, string>;
@@ -104,12 +103,7 @@ export const createIndeedClient = (
   const baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
   const query = options.query ?? "";
   const location = options.location ?? "Nederland";
-  const headers = toLiveFetchHeadersInit(
-    buildLiveFetchHeaders({
-      cookieHeader: options.cookieHeader,
-      liveEnvVar: "INDEED_LIVE",
-    })
-  );
+  const headers = toLiveFetchHeadersInit(buildLiveFetchHeaders());
 
   const getHtml = async (url: string, signal: AbortSignal): Promise<string> => {
     const response = await fetchImpl(url, {
@@ -121,7 +115,6 @@ export const createIndeedClient = (
     const body = await decodeLiveBodyBytes(await response.arrayBuffer());
     if (isCloudflareChallenge(response, body)) {
       throw cloudflareChallengeError({
-        cookieEnvVar: "INDEED_COOKIE",
         slug: "indeed",
         url,
       });

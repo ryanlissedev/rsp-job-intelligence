@@ -6,7 +6,6 @@ import type { JsonLdDetailPayload } from "../json-ld/discovery";
 import { extractJobPosting } from "../json-ld/extract";
 import {
   buildLiveFetchHeaders,
-  cookieEnvVarForLiveGate,
   readLiveHtmlOrThrow,
   toLiveFetchHeadersInit,
 } from "../json-ld/live-fetch";
@@ -377,18 +376,14 @@ export const createLinkedinClient = (
   const baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
   const keywords = options.keywords ?? LINKEDIN_SEARCH_KEYWORDS;
   const location = options.location ?? LINKEDIN_SEARCH_LOCATION;
-  const cookieEnvVar = cookieEnvVarForLiveGate(LINKEDIN_LIVE_ENV);
 
   const fetchLiveText = async (url: string): Promise<string> =>
     await withHttpTimeout(async (signal) => {
       const response = await fetchImpl(url, {
-        headers: toLiveFetchHeadersInit(
-          buildLiveFetchHeaders({ liveEnvVar: LINKEDIN_LIVE_ENV })
-        ),
+        headers: toLiveFetchHeadersInit(buildLiveFetchHeaders()),
         signal,
       });
       return await readLiveHtmlOrThrow({
-        cookieEnvVar,
         response,
         slug: "linkedin",
         url,

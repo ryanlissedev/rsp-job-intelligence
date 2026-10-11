@@ -4,10 +4,10 @@ import type { JsonLdConnectorConfig } from "../types";
  * Werkzoeken shares the Motian/json-ld jobboard shape with NVB.
  *
  * Live HTTP (`WERKZOEKEN_LIVE=1`) hits a Cloudflare managed challenge on every
- * public URL (verified 2026-09-16). Browser-like headers alone do not clear it;
- * set `WERKZOEKEN_COOKIE` from a consented browser session when audit/live
- * fetch is required — see docs/sources/werkzoeken.md (CTP-528). Do not add
- * CAPTCHA solvers.
+ * public URL (verified 2026-09-16). We send the honest product User-Agent and
+ * no clearance cookies, so live fetch fails closed with `SourceBlockedError`
+ * until Werkzoeken allows us — see docs/sources/werkzoeken.md (CTP-528). Do
+ * not add CAPTCHA solvers or cookie replays.
  */
 export const werkzoekenConfig: JsonLdConnectorConfig = {
   detailFixtures: {},

@@ -1,8 +1,8 @@
 # Indeed NL (`nl.indeed.com`)
 
 - **Slug**: `indeed` · **bronId**: `00000000-0000-4000-8000-000000000044`
-- **Naam**: Indeed · **liveEnv**: `INDEED_LIVE` (+ `INDEED_COOKIE` voor een
-  ops-cookie uit een geconsenteerde browsersessie) · **methode**: `html_parser`
+- **Naam**: Indeed · **liveEnv**: `INDEED_LIVE` (het `INDEED_COOKIE`-pad is
+  per 2026-10-11 verwijderd; geen cf_clearance-cookies meer) · **methode**: `html_parser`
 - **voorwaardenStatus**: `te_toetsen` — zie "Juridisch" onderaan.
 - **Issue**: CTP-540. PoC-context: `inventory/browser-poc-wave.md`
   (2026-09-18) en de wave-docs die de route-keuze "managed data-API (Apify)"
@@ -117,9 +117,9 @@ Plain HTTP vanaf deze host is onbruikbaar (zie statustabel). Minimaal nodig:
 1. **NL-egress + echte-browser TLS/JA3** (headed-Chrome host, bv. de
    agent-browser PoC-route) of een managed data-API (Apify, zoals CTP-540 al
    koos) — géén stealth-fingerprint/proxy-rotatie/solvers in deze connector.
-2. `INDEED_LIVE=1` + eventueel `INDEED_COOKIE` (cf_clearance uit een
-   geconsenteerde sessie) — helpt hooguit één sessie; sessies degraderen
-   binnen enkele navigaties, dus duurzame polling vereist sessie-refresh.
+2. `INDEED_LIVE=1`. Het vroegere `INDEED_COOKIE`-pad (cf_clearance uit een
+   geconsenteerde sessie) is verwijderd: de connector stuurt alleen de eerlijke
+   User-Agent `NewonesJobIntelligence/<versie>` en geen clearance-cookies.
 3. Verificatie van `?vjk=<jk>` server-side embedding (nu ongetest); anders
    één SERP-reload per kaart of de Apify-actor die detaildata levert.
 

@@ -27,7 +27,6 @@ import {
 import {
   buildLiveFetchHeaders,
   cloudflareChallengeError,
-  cookieEnvVarForLiveGate,
   decodeLiveBodyBytes,
   isCloudflareChallenge,
   toLiveFetchHeadersInit,
@@ -36,11 +35,6 @@ import type { JsonLdConnectorConfig, JsonLdDiscoveryUrl } from "./types";
 
 export interface JsonLdEffectClientOptions {
   config: JsonLdConnectorConfig;
-  /**
-   * Ops Cookie header for Cloudflare/consent-gated boards (CTP-528). Wins over
-   * `${LIVE_ENV_PREFIX}_COOKIE` when both are set. Never commit real values.
-   */
-  cookieHeader?: string | null;
   detailFixtures?: Record<string, string>;
   fetchImpl?: FetchImpl;
   listingFixturePath?: string;
@@ -55,13 +49,8 @@ const resolveLiveEnabled = (options: JsonLdEffectClientOptions): boolean =>
     ? process.env[options.config.liveEnvVar] === "1"
     : false);
 
-const liveRequestInit = (options: JsonLdEffectClientOptions): RequestInit => ({
-  headers: toLiveFetchHeadersInit(
-    buildLiveFetchHeaders({
-      cookieHeader: options.cookieHeader,
-      liveEnvVar: options.config.liveEnvVar,
-    })
-  ),
+const liveRequestInit = (): RequestInit => ({
+  headers: toLiveFetchHeadersInit(buildLiveFetchHeaders()),
 });
 
 const readLiveBodyEffect = (
@@ -74,10 +63,8 @@ const readLiveBodyEffect = (
     try: async () => decodeLiveBodyBytes(await response.arrayBuffer()),
   }).pipe(
     Effect.flatMap((body): Effect.Effect<string, ReadIoFault> => {
-      const cookieEnvVar = cookieEnvVarForLiveGate(options.config.liveEnvVar);
       if (isCloudflareChallenge(response, body)) {
         const error = cloudflareChallengeError({
-          cookieEnvVar,
           slug: options.config.slug,
           url,
         });
@@ -108,7 +95,7 @@ const fetchLiveTextEffect = (
 ): Effect.Effect<string, ReadIoFault> =>
   httpRequest({
     fetchImpl: options.fetchImpl,
-    init: liveRequestInit(options),
+    init: liveRequestInit(),
     mapHttpErrors: false,
     sourceSlug: options.config.slug,
     url,

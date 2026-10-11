@@ -1433,8 +1433,8 @@ describe("rejected fetch paths", () => {
   });
 });
 
-describe("json-ld live fetch Cloudflare / cookie jar (CTP-528)", () => {
-  it("sends browser-like headers and an ops Cookie on live listing fetch", async () => {
+describe("json-ld live fetch honest identity / Cloudflare (CTP-528)", () => {
+  it("sends the honest product User-Agent and no Cookie on live listing fetch", async () => {
     const seen: RequestInit[] = [];
     const sitemapXml =
       "<urlset><url><loc>https://www.werkzoeken.nl/vacature/demo/</loc></url></urlset>";
@@ -1448,19 +1448,19 @@ describe("json-ld live fetch Cloudflare / cookie jar (CTP-528)", () => {
     const { werkzoekenConfig } = await import("./configs/werkzoeken");
     const client = createJsonLdClient({
       config: werkzoekenConfig,
-      cookieHeader: "cf_clearance=test",
       fetchImpl: mockFetch,
       liveEnabled: true,
     });
     const urls = await client.fetchListing();
     expect(urls).toEqual([{ url: "https://www.werkzoeken.nl/vacature/demo/" }]);
     const headers = new Headers(seen[0]?.headers);
-    expect(headers.get("User-Agent")).toContain("Chrome");
+    expect(headers.get("User-Agent")).toMatch(/^NewonesJobIntelligence\//u);
+    expect(headers.get("User-Agent")).not.toContain("Chrome");
     expect(headers.get("Accept-Language")).toContain("nl-NL");
-    expect(headers.get("Cookie")).toBe("cf_clearance=test");
+    expect(headers.get("Cookie")).toBeNull();
   });
 
-  it("fails closed with an ops-actionable error on a Cloudflare challenge", async () => {
+  it("fails closed with SourceBlocked on a Cloudflare challenge", async () => {
     const mockFetch: typeof fetch = Object.assign(
       () =>
         Promise.resolve(
@@ -1480,6 +1480,8 @@ describe("json-ld live fetch Cloudflare / cookie jar (CTP-528)", () => {
     await expect(client.fetchListing()).rejects.toThrow(
       /Cloudflare managed challenge/u
     );
-    await expect(client.fetchListing()).rejects.toThrow(/WERKZOEKEN_COOKIE/u);
+    await expect(client.fetchListing()).rejects.toThrow(
+      /carry no clearance cookies/u
+    );
   });
 });

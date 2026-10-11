@@ -40,10 +40,10 @@ gepubliceerde sitemaps niet → `voorwaardenStatus: te_toetsen`, `crawlDelayMs`
 2000, `listingHashCoversDetail: false`. DPG Media serveert browser-UA's een
 privacy-consent-redirect (`myprivacy.dpgmedia.nl/consent`); een aangemelde
 bot-UA (`…compatible; JobIntelligenceBot/1.0`) krijgt de detailpagina direct.
-`ClaudeBot` staat expliciet disallowed. Live-fetch kan daardoor zonder
-`INTERMEDIAIR_COOKIE` op de consent-poort uitkomen; de honeste ontgrendeling is
-een ops-geleverde cookie uit een geconsenteerde sessie, zoals bij
-werkzoeken.
+`ClaudeBot` staat expliciet disallowed. Sinds 2026-10-11 stuurt live-fetch de
+eerlijke User-Agent `NewonesJobIntelligence/<versie>` en nooit een ops-cookie;
+of DPG die UA als bot-UA direct doorlaat of naar de consent-poort stuurt, is
+nog niet live geverifieerd.
 
 Fixtures: `tools/fixtures/record.ts`, standaardstrips. De drie detailpagina's
 zijn opgenomen met de bot-UA omdat de fixture-UA op dezelfde privacy-poort

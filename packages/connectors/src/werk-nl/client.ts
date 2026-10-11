@@ -2,6 +2,7 @@ import { resolveEgressFetch } from "../egress";
 import { loadConnectorFixture } from "../fixtures/load";
 import { resolveHttpTimeoutMs, withHttpTimeout } from "../http-timeout";
 import { HttpStatusError } from "../json-ld/live-fetch";
+import { JOB_INTELLIGENCE_USER_AGENT } from "../user-agent";
 import type {
   WerkNlSearchItem,
   WerkNlSearchResponse,
@@ -14,8 +15,6 @@ const XSRF_COOKIE = "XSRF-TOKEN";
 const XSRF_HEADER = "X-XSRF-TOKEN";
 const MAX_REDIRECT_HOPS = 10;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
-const USER_AGENT =
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36";
 
 export interface WerkNlClient {
   fetchListing: (
@@ -309,7 +308,7 @@ export const createWerkNlClient = (
       const { host } = new URL(current);
       const cookieHeader = session ? cookiesForHost(session.jar, host) : "";
       const headers = new Headers(init.headers);
-      headers.set("User-Agent", USER_AGENT);
+      headers.set("User-Agent", JOB_INTELLIGENCE_USER_AGENT);
       if (cookieHeader) {
         headers.set("Cookie", cookieHeader);
       }

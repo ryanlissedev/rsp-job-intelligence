@@ -102,16 +102,13 @@ export {
 } from "./client-effect";
 
 export {
-  BROWSER_LIKE_HEADERS,
   buildLiveFetchHeaders,
   cloudflareChallengeError,
-  cookieEnvVarForLiveGate,
   decodeLiveBodyBytes,
   HttpStatusError,
   isCloudflareChallenge,
+  LIVE_FETCH_HEADERS,
   readLiveHtmlOrThrow,
-  readOpsCookieHeader,
   toLiveFetchHeadersInit,
   type LiveFetchHeaders,
-  type LiveFetchHeadersOptions,
 } from "./live-fetch";

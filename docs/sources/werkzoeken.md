@@ -37,36 +37,19 @@ JS challenge and receives `cf_clearance` (and related) cookies. Product code
 **must not** embed CAPTCHA solvers, residential-proxy CAPTCHA farms, or other
 ToS-violating bypasses.
 
-## Honest unblock path (ops cookie / consent jar)
+## No clearance-cookie path (removed 2026-10-11)
 
-For **bron-URL audit** (CTP-514 field-gap Herkomst compare) and any future
-`WERKZOEKEN_LIVE=1` poll:
+The earlier ops `WERKZOEKEN_COOKIE` / `cookieHeader` route (replaying a
+`cf_clearance` jar from a consented browser session) has been **removed**.
+Every live connector now identifies itself with the shared honest
+User-Agent `NewonesJobIntelligence/<version>`
+(`packages/connectors/src/user-agent.ts`) and never sends Cloudflare
+clearance cookies or any other ops-supplied Cookie header.
 
-1. Open the target vacancy URL in a normal browser where an operator may
-   accept Cloudflare / site consent as a human visitor.
-2. After the page loads, export the Cookie header for `www.werkzoeken.nl`
-   (at minimum `cf_clearance`; include `__cf_bm` / consent cookies if present).
-3. Put the value in the **protected** worker/server env only — never commit it,
-   never paste it into Linear/chat/handoffs:
-
-   ```bash
-   WERKZOEKEN_LIVE=1
-   WERKZOEKEN_COOKIE='cf_clearance=…; __cf_bm=…'
-   ```
-
-4. Re-run the audit fetch or live json-ld client. The shared client
-   (`packages/connectors/src/json-ld/live-fetch.ts`) sends browser-like
-   headers and, when set, the ops `Cookie` header. On a still-challenged
-   response it fails closed with an error that points back here.
-5. Cookies expire; refresh from a new consented browser session when fetches
-   start returning the challenge again.
-
-Optional code override (tests / one-shot scripts): pass `cookieHeader` into
-`createJsonLdClient` / `createJsonLdEffectClient` — same rule, no secrets in
-git.
-
-The same `*_LIVE` → `*_COOKIE` pairing is available for other json-ld boards
-that later hit a consent or CF gate (see CTP-530 DPG privacy gate for NVB).
+A Cloudflare managed challenge therefore fails closed with a
+`SourceBlockedError` that points back here. The only unblock is the source
+operator allow-listing our User-Agent (or a licensed data feed); until then
+Werkzoeken stays Neon-historical only.
 
 ## What product will not do
 
@@ -95,7 +78,7 @@ Unit coverage: `packages/application/src/backfill/neon-v1.spec.ts`
 
 CTP-514 Werkzoeken n=5: Herkomst bron-URLs were **5/5 HTTP 403 Cloudflare**,
 so live source-page compare was blocked; scoring used curated + Motian raw
-only. After an ops cookie jar is in place, re-fetch the same `bron_url`
+only. If Werkzoeken ever allows our User-Agent, re-fetch the same `bron_url`
 sample set and attach evidence under the field-gap packet. Evidence path from
 the audit: `field-gap/samples-werkzoeken.json`.
 

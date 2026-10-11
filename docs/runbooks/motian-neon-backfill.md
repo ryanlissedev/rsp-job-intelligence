@@ -22,7 +22,7 @@ Both paths persist curated rows and outbox events to Postgres. Search reads the 
 | `mipublic` | Neon historical only — no live scrape in this job |
 | `flextender` | Historical Neon |
 | `striive` | Neon historical only — no Striive credentials or live Auth0 |
-| `werkzoeken` | Neon historical only — no live HTTP. Bron-URL audit blocked by Cloudflare managed challenge; honest unblock = ops `WERKZOEKEN_COOKIE` jar (`docs/sources/werkzoeken.md`, CTP-528). Provincie-from-title mapping is in the shared Motian mapper (#284). |
+| `werkzoeken` | Neon historical only — no live HTTP. Bron-URL audit blocked by Cloudflare managed challenge; the clearance-cookie path was removed 2026-10-11; only an operator allow-list of our honest UA unblocks it (`docs/sources/werkzoeken.md`, CTP-528). Provincie-from-title mapping is in the shared Motian mapper (#284). |
 | `starapple-nl` and legacy `starapple` | Both source slugs normalize to the same Catapulze bron |
 
 Excluded: `monsterboard`, `indeed` (catalog-only, no job rows).

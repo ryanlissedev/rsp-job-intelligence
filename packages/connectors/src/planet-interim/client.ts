@@ -23,9 +23,7 @@ export const createPlanetInterimClient = (
   const fetchImpl =
     options.fetchImpl ?? resolveEgressFetch(options.config.slug);
   const pagination: PlanetInterimPaginationOptions = {
-    cookieHeader: options.cookieHeader,
     fetchImpl,
-    liveEnvVar: options.config.liveEnvVar,
     maxPages: options.maxPages,
     pageDelayMs: options.pageDelayMs,
     timeoutMs: options.timeoutMs,

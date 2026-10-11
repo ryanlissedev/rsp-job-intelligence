@@ -1,6 +1,7 @@
 import { resolveEgressFetch } from "../egress";
 import { loadConnectorFixture } from "../fixtures/load";
 import { decodeHtmlEntities } from "../html-entities";
+import { JOB_INTELLIGENCE_USER_AGENT } from "../user-agent";
 import type {
   FreelancerNlDetail,
   FreelancerNlListingItem,
@@ -277,7 +278,7 @@ export const createFreelancerNlClient = (
     cfc3ced1: "freelancer-nl/detail-cfc3ced1.json",
   };
   const baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
-  const headers = { "User-Agent": "Catapulze-Job-Intelligence/1.0" };
+  const headers = { "User-Agent": JOB_INTELLIGENCE_USER_AGENT };
 
   return {
     fetchDetailHtml: async (item) => {

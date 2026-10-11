@@ -69,6 +69,10 @@ export {
 } from "./run-outcomes";
 export { SourceBlockedError } from "./source-blocked";
 export {
+  JOB_INTELLIGENCE_USER_AGENT,
+  JOB_INTELLIGENCE_USER_AGENT_VERSION,
+} from "./user-agent";
+export {
   InMemoryObservationRecorder,
   type ObservationRecorder,
   type ObservationRecordInput,

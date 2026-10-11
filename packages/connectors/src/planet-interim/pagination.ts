@@ -3,7 +3,6 @@ import { resolveHttpTimeoutMs, withHttpTimeout } from "../http-timeout";
 import { extractListingLinks } from "../json-ld/discovery";
 import {
   buildLiveFetchHeaders,
-  cookieEnvVarForLiveGate,
   readLiveHtmlOrThrow,
   toLiveFetchHeadersInit,
 } from "../json-ld/live-fetch";
@@ -23,8 +22,6 @@ export class PlanetInterimPaginationError extends Error {
 
 export interface PlanetInterimPaginationOptions {
   fetchImpl?: typeof fetch;
-  liveEnvVar?: string;
-  cookieHeader?: string | null;
   maxPages?: number;
   pageDelayMs?: number;
   timeoutMs?: number;
@@ -217,13 +214,9 @@ export const fetchPlanetInterimListingPages = async (
   }
 
   const fetchImpl = options.fetchImpl ?? resolveEgressFetch("planet-interim");
-  const cookieEnvVar = cookieEnvVarForLiveGate(options.liveEnvVar);
-  const baseHeaders = buildLiveFetchHeaders({
-    cookieHeader: options.cookieHeader,
-    liveEnvVar: options.liveEnvVar,
-  });
+  const baseHeaders = buildLiveFetchHeaders();
+  // Session jar: only cookies Planet Interim itself sets during this run.
   const cookies = new Map<string, string>();
-  mergeCookies(cookies, baseHeaders.Cookie ?? null);
   const pages: string[] = [];
   const pageSignatures = new Set<string>();
 
@@ -258,7 +251,6 @@ export const fetchPlanetInterimListingPages = async (
         });
         updateCookies(cookies, response);
         const body = await readLiveHtmlOrThrow({
-          cookieEnvVar,
           response,
           slug: "planet-interim",
           url,

@@ -16,7 +16,6 @@ import {
 import type { JsonLdDetailPayload } from "./discovery";
 import {
   buildLiveFetchHeaders,
-  cookieEnvVarForLiveGate,
   readLiveHtmlOrThrow,
   toLiveFetchHeadersInit,
 } from "./live-fetch";
@@ -70,11 +69,6 @@ export class MissingDetailFixtureError extends Error {
 
 export interface JsonLdClientOptions {
   config: JsonLdConnectorConfig;
-  /**
-   * Ops Cookie header for Cloudflare/consent-gated boards (CTP-528). Wins over
-   * `${LIVE_ENV_PREFIX}_COOKIE` when both are set. Never commit real values.
-   */
-  cookieHeader?: string | null;
   detailFixtures?: Record<string, string>;
   fetchImpl?: typeof fetch;
   listingFixturePath?: string;
@@ -106,12 +100,6 @@ export const createJsonLdClient = (
     `${config.slug}/listing-page-0.json`;
   const detailFixtures = options.detailFixtures ?? config.detailFixtures ?? {};
   const sitemapFixtures = config.sitemapFixtures ?? {};
-  const cookieEnvVar = cookieEnvVarForLiveGate(config.liveEnvVar);
-  const liveHeaders = () =>
-    buildLiveFetchHeaders({
-      cookieHeader: options.cookieHeader,
-      liveEnvVar: config.liveEnvVar,
-    });
 
   const fetchLiveText = async (
     url: string,
@@ -120,11 +108,10 @@ export const createJsonLdClient = (
     await withHttpTimeout(
       async (signal) => {
         const response = await fetchImpl(url, {
-          headers: toLiveFetchHeadersInit(liveHeaders()),
+          headers: toLiveFetchHeadersInit(buildLiveFetchHeaders()),
           signal,
         });
         return await readLiveHtmlOrThrow({
-          cookieEnvVar,
           response,
           slug: config.slug,
           url,

@@ -3,6 +3,7 @@ import {
   STARAPPLE_VACANCY_SITEMAP_URL,
 } from "@ji/application/backfill";
 import type { StarappleLiveIndex } from "@ji/application/backfill";
+import { JOB_INTELLIGENCE_USER_AGENT } from "@ji/connectors";
 import { createRawObjectStore } from "@ji/connectors/s3-object-client";
 import { runMotianV1Backfill } from "@ji/db";
 import { schemaTask } from "@trigger.dev/sdk";
@@ -25,9 +26,7 @@ const STARAPPLE_SITEMAP_TIMEOUT_MS = 15_000;
  */
 const fetchStarappleLiveIndex = async (): Promise<StarappleLiveIndex> => {
   const response = await fetch(STARAPPLE_VACANCY_SITEMAP_URL, {
-    headers: {
-      "User-Agent": "Catapulze-JI Neon v1 backfill (CTP-527; one request)",
-    },
+    headers: { "User-Agent": JOB_INTELLIGENCE_USER_AGENT },
     signal: AbortSignal.timeout(STARAPPLE_SITEMAP_TIMEOUT_MS),
   });
   if (!response.ok) {

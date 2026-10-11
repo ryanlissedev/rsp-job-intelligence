@@ -102,7 +102,6 @@ describe("classifyRunFailure", () => {
     expect(
       classifyRunFailure(
         cloudflareChallengeError({
-          cookieEnvVar: null,
           slug: "werkzoeken",
           url: "https://example.test/",
         })
@@ -249,7 +248,6 @@ describe("runConnector outcome accounting", () => {
       "B-1": () =>
         Promise.reject(
           cloudflareChallengeError({
-            cookieEnvVar: null,
             slug: "blocked",
             url: "https://example.test/vacature/1",
           })

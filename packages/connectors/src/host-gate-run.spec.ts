@@ -71,7 +71,6 @@ const rateLimited = (retryAfterMs: number | null) =>
 
 const challenge = () => {
   const blocked = cloudflareChallengeError({
-    cookieEnvVar: null,
     slug: "gate",
     url: "https://gate.test/job",
   });
